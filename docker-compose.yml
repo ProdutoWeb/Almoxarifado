@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  almoxarifado-frontend:
+    # Usaremos a imagem que o Github processar e publicar no ghcr.io
+    image: ghcr.io/${GITHUB_REPOSITORY_LOWER}:latest
+    container_name: almoxarifado-app
+    restart: unless-stopped
+    expose:
+      - "80"
+    environment:
+      # VIRTUAL_HOST e LETSENCRYPT_HOST instruem o proxy-manager do usuario.
+      - VIRTUAL_HOST=${APP_DOMAIN}
+      - LETSENCRYPT_HOST=${APP_DOMAIN}
+      # A porta interna deve bater com o expose do Dockerfile (80)
+      - VIRTUAL_PORT=80
+    networks:
+      - pwbot_net
+
+networks:
+  pwbot_net:
+    external: true
