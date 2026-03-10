@@ -48,7 +48,7 @@ jobs:
 
       - name: Copy docker-compose to Server via Rsync
         uses: easingthemes/ssh-deploy@main
-        env:
+        with:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           ARGS: "-rltgoDzvO"
           SOURCE: "docker-compose.yml"
