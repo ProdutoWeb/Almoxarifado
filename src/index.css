@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-navy: #0f172a;
+  --color-brand-navy-light: #1e293b;
+  --color-brand-gray-light: #f1f5f9;
+  --color-brand-gray-dark: #cbd5e1;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-brand-gray-light);
+    color: var(--color-brand-navy);
+    min-height: 100vh;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+}
