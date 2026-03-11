@@ -45,3 +45,37 @@ jobs:
           build-args: |
             VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
             VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            echo "--- INICIANDO DEPLOY ALMOXARIFADO ---"
+            
+            # Login no GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Download da nova imagem
+            docker pull ghcr.io/${{ env.REPO_LC }}:latest
+            
+            # Remover container antigo se existir
+            docker rm -f almoxarifado-app || true
+            
+            # Rodar o novo container conectando na rede do proxy
+            docker run -d \
+              --name almoxarifado-app \
+              --restart unless-stopped \
+              --network pwbot_net \
+              -e VIRTUAL_HOST=almoxarifado.produtoweb.com.br \
+              -e LETSENCRYPT_HOST=almoxarifado.produtoweb.com.br \
+              -e LETSENCRYPT_EMAIL=suporte@produtoweb.com.br \
+              ghcr.io/${{ env.REPO_LC }}:latest
+            
+            # Limpar imagens antigas (tag <none>)
+            docker image prune -f
+            
+            echo "--- DEPLOY CONCLUÍDO ---"
+
