@@ -45,33 +45,3 @@ jobs:
           build-args: |
             VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
             VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
-
-      - name: Copy docker-compose to Server via Rsync
-        uses: easingthemes/ssh-deploy@main
-        with:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
-          ARGS: "-rltgoDzvO"
-          SOURCE: "docker-compose.yml"
-          REMOTE_HOST: ${{ secrets.HOST }}
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: "/var/www/almoxarifado"
-
-      - name: Deploy on Hetzner Server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            # Vamos para a pasta definida no Rsync
-            mkdir -p /var/www/almoxarifado
-            cd /var/www/almoxarifado
-            # Pega o repo lowercase 
-            export GITHUB_REPOSITORY_LOWER=${{ env.REPO_LC }}
-            export APP_DOMAIN=${{ secrets.APP_DOMAIN }}
-            # Força o pull da nova imagem
-            docker pull ghcr.io/${{ env.REPO_LC }}:latest
-            # Reinicia o container recriando com a imagem nova
-            docker-compose up -d --build
-            # Remove arquivos orfaos do docker para não encher disco
-            docker image prune -f
