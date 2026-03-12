@@ -235,9 +235,9 @@ export const Solicitacao = () => {
               <table className="w-full text-xs text-left">
                 <thead className="border-b-2 border-gray-200">
                   <tr>
+                    <th className="p-3 font-bold text-gray-800 text-center">Cód. Produto</th>
                     <th className="p-3 font-bold text-gray-800">Item</th>
                     <th className="p-3 font-bold text-gray-800 text-center">Unidade</th>
-                    <th className="p-3 font-bold text-gray-800 text-center">Disponibilidade</th>
                     <th className="p-3 font-bold text-gray-800 text-center">Ações</th>
                   </tr>
                 </thead>
@@ -257,6 +257,7 @@ export const Solicitacao = () => {
                   ) : (
                     produtosFiltrados.map((produto) => (
                       <tr key={produto.id} className="hover:bg-gray-50">
+                        <td className="p-3 text-center text-gray-600 font-mono text-xs">{produto.id.substring(0, 8)}</td>
                         <td className="p-3">
                           <span className="font-semibold text-gray-800">{produto.nome}</span>
                           {produto.descricao && (
@@ -264,7 +265,6 @@ export const Solicitacao = () => {
                           )}
                         </td>
                         <td className="p-3 text-center text-gray-600">{produto.unidade}</td>
-                        <td className="p-3 text-center text-gray-600">{produto.quantidade_estoque}</td>
                         <td className="p-3 text-center">
                           <button
                             type="button"

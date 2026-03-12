@@ -13,6 +13,7 @@ export const Triagem = () => {
   const [pedidos, setPedidos] = useState<PedidoComItens[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
+  const [viewMode, setViewMode] = useState<'pedido' | 'produto'>('pedido');
 
   useEffect(() => {
     carregarPedidos();
@@ -119,11 +120,42 @@ export const Triagem = () => {
           .update({ status_geral: 'processado' })
           .eq('id', pedidoId);
           
-        // Recarregar tudo para tirar da lista de pendentes
-        carregarPedidos();
+        // Se estivermos na visão de pedido, recarregar tira da lista
+        // Se estivermos na visão de produto, talvez seja melhor manter para não bagunçar a lista enquanto o usuário mexe
+        if (viewMode === 'pedido') {
+          carregarPedidos();
+        }
       }
     }
   };
+
+  // Agrupar itens por produto para a visão "Por Produto"
+  const itensAgrupadosPorProduto = pedidos.reduce((acc, pedido) => {
+    pedido.itens_pedido.forEach(item => {
+      if (item.status !== 'pendente') return; // Só agrupar os pendentes
+      
+      const produtoId = item.produto_id;
+      if (!acc[produtoId]) {
+        acc[produtoId] = {
+          produto: item.produto,
+          solicitacoes: [],
+          totalSolicitado: 0
+        };
+      }
+      acc[produtoId].solicitacoes.push({
+        ...item,
+        solicitante_nome: pedido.solicitante_nome,
+        departamento: pedido.departamento,
+        pedido_id: pedido.id
+      });
+      acc[produtoId].totalSolicitado += item.quantidade_solicitada;
+    });
+    return acc;
+  }, {} as Record<string, { 
+    produto: Database['public']['Tables']['produtos']['Row'], 
+    solicitacoes: (Database['public']['Tables']['itens_pedido']['Row'] & { solicitante_nome: string, departamento: string, pedido_id: string })[],
+    totalSolicitado: number 
+  }>);
 
   if (loading) {
     return (
@@ -135,20 +167,40 @@ export const Triagem = () => {
 
   return (
     <div className="flex flex-col h-full w-full">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Triagem de Pedidos</h1>
-        <p className="text-slate-500 text-sm">Analise e atenda os pedidos pendentes</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Triagem de Pedidos</h1>
+          <p className="text-slate-500 text-sm">Analise e atenda os pedidos pendentes</p>
+        </div>
+        
+        <div className="flex bg-slate-100 p-1 rounded-lg">
+          <button 
+            onClick={() => setViewMode('pedido')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'pedido' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Por Pedido
+          </button>
+          <button 
+            onClick={() => setViewMode('produto')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'produto' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Por Produto
+          </button>
+        </div>
       </div>
 
-      {pedidos.length === 0 ? (
+      {pedidos.length === 0 || (viewMode === 'produto' && Object.keys(itensAgrupadosPorProduto).length === 0) ? (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center text-slate-500">
           <Check className="h-12 w-12 text-slate-300 mx-auto mb-4" />
           <p className="text-lg font-medium text-slate-700">Tudo limpo por aqui!</p>
           <p>Não há pedidos pendentes para triagem.</p>
         </div>
-      ) : (
+      ) : viewMode === 'pedido' ? (
         <div className="space-y-4">
           {pedidos.map((pedido) => {
+            const itemsPendente = pedido.itens_pedido.filter(i => i.status === 'pendente');
+            if (itemsPendente.length === 0) return null; // Ocultar pedidos já resolvidos nesta view
+
             const isExpanded = expandidos[pedido.id];
             const itemsAmount = pedido.itens_pedido.length;
             const itemsResolvedCount = pedido.itens_pedido.filter(i => i.status !== 'pendente').length;
@@ -211,7 +263,97 @@ export const Triagem = () => {
             );
           })}
         </div>
+      ) : (
+        /* Visão Por Produto */
+        <div className="space-y-6">
+          {Object.entries(itensAgrupadosPorProduto).map(([produtoId, data]) => (
+            <div key={produtoId} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="bg-slate-800 p-4 flex items-center justify-between text-white">
+                <div>
+                  <h3 className="text-lg font-bold">{data.produto.nome}</h3>
+                  <div className="flex items-center space-x-4 text-xs text-slate-300 mt-1">
+                    <span>Cód: {data.produto.id.substring(0, 8).toUpperCase()}</span>
+                    <span>Unidade: {data.produto.unidade}</span>
+                    <span className={`px-2 py-0.5 rounded font-bold ${data.produto.quantidade_estoque >= data.totalSolicitado ? 'bg-green-500/20 text-green-300' : 'bg-orange-500/20 text-orange-300'}`}>
+                      Estoque: {data.produto.quantidade_estoque}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold block">Total Solicitado</span>
+                  <span className="text-2xl font-black">{data.totalSolicitado}</span>
+                </div>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-slate-600">
+                  <thead className="bg-slate-50 text-slate-700 uppercase text-[10px] font-bold border-b border-slate-100">
+                    <tr>
+                      <th className="px-6 py-3">Solicitante</th>
+                      <th className="px-6 py-3">Setor</th>
+                      <th className="px-6 py-3 text-center">Qtd Solicitada</th>
+                      <th className="px-6 py-3 text-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {data.solicitacoes.map(item => (
+                      <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-6 py-4 font-medium text-slate-800">{item.solicitante_nome}</td>
+                        <td className="px-6 py-4">
+                          <span className="bg-blue-50 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">{item.departamento}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center font-bold text-slate-700">{item.quantidade_solicitada}</td>
+                        <td className="px-6 py-4 text-right">
+                          <AcaoSimplificadaItem 
+                            item={item} 
+                            estoqueDisponivel={data.produto.quantidade_estoque}
+                            onResolvido={resolverItem}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
+    </div>
+  );
+};
+
+// Componente para ação rápida na visão por produto
+const AcaoSimplificadaItem = ({ item, estoqueDisponivel, onResolvido }: {
+  item: any,
+  estoqueDisponivel: number,
+  onResolvido: (itemId: string, pedidoId: string, status: 'atendido' | 'rejeitado', qtdAtendida: number) => void
+}) => {
+  const [qtd, setQtd] = useState(item.quantidade_solicitada);
+  
+  return (
+    <div className="flex items-center justify-end space-x-2">
+      <input
+        type="number"
+        min="1"
+        max={estoqueDisponivel}
+        value={qtd}
+        onChange={(e) => setQtd(Number(e.target.value))}
+        className="w-14 h-7 text-center text-xs border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+      />
+      <button
+        onClick={() => onResolvido(item.id, item.pedido_id, 'atendido', qtd)}
+        disabled={qtd > estoqueDisponivel || qtd < 1}
+        className="h-7 px-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold text-[10px] transition-colors disabled:opacity-50"
+      >
+        OK
+      </button>
+      <button
+        onClick={() => onResolvido(item.id, item.pedido_id, 'rejeitado', 0)}
+        className="h-7 px-2 bg-slate-200 hover:bg-red-600 hover:text-white text-slate-600 rounded font-bold text-[10px] transition-colors"
+      >
+        X
+      </button>
     </div>
   );
 };
