@@ -6,6 +6,7 @@ import { Login } from './pages/Auth/Login';
 import { Catalogo } from './pages/Admin/Catalogo';
 import { Triagem } from './pages/Admin/Triagem';
 import { Logistica } from './pages/Admin/Logistica';
+import { Historico } from './pages/Admin/Historico';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
             <Route path="catalogo" element={<Catalogo />} />
             <Route path="triagem" element={<Triagem />} />
             <Route path="logistica" element={<Logistica />} />
+            <Route path="historico" element={<Historico />} />
           </Route>
 
           {/* Fallback */}

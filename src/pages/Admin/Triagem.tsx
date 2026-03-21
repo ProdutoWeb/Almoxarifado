@@ -129,6 +129,59 @@ export const Triagem = () => {
     }
   };
 
+  const atenderTodos = async (produtoId: string) => {
+    const dataProduto = itensAgrupadosPorProduto[produtoId];
+    if (!dataProduto) return;
+    
+    if (!window.confirm(`Deseja atender todas as ${dataProduto.solicitacoes.length} solicitações pendentes deste produto?\n\nAtenção: O sistema atenderá a fila de forma automática até acabar o estoque.`)) return;
+
+    setLoading(true);
+    try {
+      let estoqueDisponivel = dataProduto.produto.quantidade_estoque;
+      let totalDescontado = 0;
+
+      for (const req of dataProduto.solicitacoes) {
+        if (estoqueDisponivel <= 0) break; // Sem estoque
+        
+        const qtdAtendida = Math.min(req.quantidade_solicitada, estoqueDisponivel);
+        
+        // 1. Atualizar o item
+        await supabase
+          .from('itens_pedido')
+          .update({ status: 'atendido', quantidade_atendida: qtdAtendida })
+          .eq('id', req.id);
+          
+        estoqueDisponivel -= qtdAtendida;
+        totalDescontado += qtdAtendida;
+        
+        // 2. Verificar se o pedido fechou
+        const pedido = pedidos.find(p => p.id === req.pedido_id);
+        if (pedido) {
+          const outrosItens = pedido.itens_pedido.filter(i => i.id !== req.id);
+          const todosOsOutrosResolvidos = outrosItens.every(i => i.status !== 'pendente');
+          if (todosOsOutrosResolvidos) {
+            await supabase.from('pedidos').update({ status_geral: 'processado' }).eq('id', req.pedido_id);
+          }
+        }
+      }
+
+      // Atualizar o estoque
+      if (totalDescontado > 0) {
+        await supabase
+          .from('produtos')
+          .update({ quantidade_estoque: dataProduto.produto.quantidade_estoque - totalDescontado })
+          .eq('id', produtoId);
+      }
+      
+      await carregarPedidos();
+    } catch (e: any) {
+      console.error(e);
+      alert('Erro ao atender em lote: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Agrupar itens por produto para a visão "Por Produto"
   const itensAgrupadosPorProduto = pedidos.reduce((acc, pedido) => {
     pedido.itens_pedido.forEach(item => {
@@ -279,9 +332,18 @@ export const Triagem = () => {
                     </span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold block">Total Solicitado</span>
-                  <span className="text-2xl font-black">{data.totalSolicitado}</span>
+                <div className="text-right flex flex-col items-end">
+                  <div className="mb-2">
+                    <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold block">Total Solicitado</span>
+                    <span className="text-2xl font-black block leading-none">{data.totalSolicitado}</span>
+                  </div>
+                  <button 
+                    onClick={() => atenderTodos(produtoId)}
+                    disabled={data.produto.quantidade_estoque === 0}
+                    className="bg-green-500 hover:bg-green-600 text-white text-[10px] px-3 py-1.5 rounded font-bold transition-colors disabled:opacity-50 cursor-pointer uppercase tracking-wide border border-transparent hover:border-green-700 shadow-sm"
+                  >
+                    Atender Todos
+                  </button>
                 </div>
               </div>
               

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../types/database.types';
-import { Plus, Minus, Check, Clock, XCircle, Search, Eraser } from 'lucide-react';
+import { Plus, Minus, Check, Clock, XCircle, Search, Eraser, Download } from 'lucide-react';
+import Papa from 'papaparse';
 
 type Produto = Database['public']['Tables']['produtos']['Row'];
 type ItemCarrinho = { produto: Produto; quantidade: number };
@@ -12,6 +13,10 @@ export const Solicitacao = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [sucesso, setSucesso] = useState(false);
+  const [ultimoPedido, setUltimoPedido] = useState<any>(null);
+
+  const diaAtual = new Date().getDate();
+  const periodoBloqueado = diaAtual < 15;
 
   const [form, setForm] = useState({
     nome: '',
@@ -135,6 +140,12 @@ export const Solicitacao = () => {
 
       if (itensError) throw itensError;
 
+      setUltimoPedido({
+        carrinho: [...carrinho],
+        form: { ...form },
+        id: novoPedidoId,
+        data: new Date().toLocaleString()
+      });
       setSucesso(true);
       setCarrinho([]);
       setForm({ nome: '', siape: '', departamento: '' });
@@ -148,18 +159,54 @@ export const Solicitacao = () => {
   };
 
   if (sucesso) {
+    const baixarPlanilha = () => {
+      if (!ultimoPedido) return;
+      
+      const dados = ultimoPedido.carrinho.map((item: any) => ({
+        "Pedido ID": ultimoPedido.id,
+        "Data": ultimoPedido.data,
+        "Solicitante": ultimoPedido.form.nome,
+        "SIAPE": ultimoPedido.form.siape,
+        "Departamento": ultimoPedido.form.departamento,
+        "Cód Produto": item.produto.id,
+        "Produto": item.produto.nome,
+        "Unidade": item.produto.unidade,
+        "Qtd Solicitada": item.quantidade
+      }));
+
+      const csv = Papa.unparse(dados, { delimiter: ';' });
+      // Add BOM to fix Excel accent encoding
+      const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Pedido_${ultimoPedido.form.departamento}_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
         <div className="bg-white p-8 rounded border border-gray-300 shadow-sm w-full max-w-md text-center">
           <Check className="h-16 w-16 text-green-600 mx-auto mb-6" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Solicitação Enviada!</h2>
-          <p className="text-gray-600 mb-8">Sua requisição foi encaminhada ao almoxarifado.</p>
-          <button
-            onClick={() => setSucesso(false)}
-            className="w-full bg-[#20558a] text-white font-medium py-2 rounded hover:bg-[#1a4570] transition"
-          >
-            Nova Solicitação
-          </button>
+          <p className="text-gray-600 mb-6">Sua requisição foi encaminhada ao almoxarifado.</p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={baixarPlanilha}
+              className="w-full bg-green-600 text-white font-bold py-2.5 rounded hover:bg-green-700 transition flex items-center justify-center cursor-pointer shadow-sm"
+            >
+              <Download className="h-5 w-5 mr-2" />
+              Baixar Resumo (Excel)
+            </button>
+            <button
+              onClick={() => { setSucesso(false); setUltimoPedido(null); }}
+              className="w-full bg-[#20558a] text-white font-bold py-2.5 rounded hover:bg-[#1a4570] transition cursor-pointer shadow-sm"
+            >
+              Nova Solicitação
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -170,6 +217,14 @@ export const Solicitacao = () => {
       
       {/* Container Principal que simula o Header Oculto e Foco no Conteúdo */}
       <div className="max-w-[1400px] mx-auto pt-8 px-4">
+        {periodoBloqueado && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded shadow-sm">
+            <h3 className="font-bold text-lg mb-1 text-red-800">Acesso Bloqueado Temporariamente</h3>
+            <p className="text-red-700">
+              A criação de novos pedidos ao almoxarifado é permitida exclusivamente entre os dias <strong>15 e 31</strong> de cada mês. Neste período (dias 1 a 14), o sistema encontra-se fechado para novas solicitações.
+            </p>
+          </div>
+        )}
         <h1 className="text-2xl text-gray-800 font-normal mb-6">
           Adicionar materiais à solicitação
         </h1>
@@ -269,8 +324,13 @@ export const Solicitacao = () => {
                           <button
                             type="button"
                             onClick={() => adicionarAoCarrinho(produto)}
-                            className="text-[#20558a] hover:text-[#113253] border border-transparent hover:border-[#20558a] bg-transparent hover:bg-blue-50 p-1 rounded-sm transition-colors cursor-pointer inline-flex"
-                            title="Adicionar item"
+                            disabled={periodoBloqueado}
+                            className={`p-1 rounded-sm transition-colors inline-flex ${
+                              periodoBloqueado 
+                                ? 'text-gray-300 opacity-50 cursor-not-allowed' 
+                                : 'text-[#20558a] hover:text-[#113253] border border-transparent hover:border-[#20558a] bg-transparent hover:bg-blue-50 cursor-pointer'
+                            }`}
+                            title={periodoBloqueado ? "Período bloqueado" : "Adicionar item"}
                           >
                             <Plus className="h-4 w-4" />
                           </button>
@@ -396,8 +456,8 @@ export const Solicitacao = () => {
               <div className="p-4 bg-white space-y-2">
                 <button
                   type="submit"
-                  disabled={submitting || carrinho.length === 0}
-                  className="w-full bg-gradient-to-b from-[#2a68a6] to-[#1c4b7b] hover:from-[#1c4b7b] hover:to-[#15385c] text-white border border-[#143555] rounded-sm py-2 flex items-center justify-center font-bold text-xs shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+                  disabled={submitting || carrinho.length === 0 || periodoBloqueado}
+                  className="w-full bg-gradient-to-b from-[#2a68a6] to-[#1c4b7b] hover:from-[#1c4b7b] hover:to-[#15385c] text-white border border-[#143555] rounded-sm py-2 flex items-center justify-center font-bold text-xs shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <Check className="h-4 w-4 mr-2" />
                   {submitting ? 'Enviando...' : 'Enviar Solicitação'}

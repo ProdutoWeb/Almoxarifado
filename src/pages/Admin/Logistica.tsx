@@ -140,69 +140,74 @@ export const Logistica = () => {
               </div>
 
               {/* Layout de Impressão (Visível apenas no print) */}
-              <div className="hidden print:block p-8 space-y-12">
-                {[1, 2].map((via) => (
-                  <div key={via} className={via === 1 ? "border-b-2 border-dashed border-slate-300 pb-12" : ""}>
-                    <div className="flex justify-between items-start mb-6 border-b-2 border-slate-900 pb-4">
-                      <div>
-                        <h1 className="text-2xl font-black uppercase tracking-tight">Guia de Entrega - Almoxarifado</h1>
-                        <p className="text-lg font-bold text-slate-700">Setor: {departamento}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-sm font-bold bg-slate-100 px-3 py-1 rounded border border-slate-300 uppercase italic">
-                          {via}ª Via - {via === 1 ? 'Almoxarifado' : 'Setor'}
-                        </span>
-                        <p className="text-xs text-slate-500 mt-2">Emitido em: {new Date().toLocaleString()}</p>
-                      </div>
-                    </div>
+              <div className="hidden print:block print:p-0">
+                <style type="text/css" media="print">
+                  {`@page { margin: 10mm; }`}
+                </style>
+                <div className="mb-2 border-b-2 border-slate-900 pb-2 flex justify-between items-end">
+                  <div>
+                    <h1 className="text-lg font-black uppercase tracking-tight leading-none">Guia de Entrega - Almoxarifado</h1>
+                    <p className="text-sm font-bold text-slate-700 mt-1">Setor: {departamento}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-300 uppercase italic">Via Única</span>
+                    <p className="text-[9px] text-slate-500 mt-1">Emitido: {new Date().toLocaleString()}</p>
+                  </div>
+                </div>
 
-                    <div className="space-y-8">
-                      {listaPedidos.map(pedido => (
-                        <div key={pedido.id} className="border border-slate-200 rounded p-4">
-                          <div className="flex justify-between border-b border-slate-100 pb-2 mb-3">
-                            <span className="font-black text-slate-900 uppercase">Solicitante: {pedido.solicitante_nome}</span>
-                            <span className="text-xs font-medium">SIAPE: {pedido.solicitante_siape}</span>
-                          </div>
-                          
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="text-left border-b border-slate-200">
-                                <th className="pb-1 uppercase text-[10px] font-bold">Produto</th>
-                                <th className="pb-1 uppercase text-[10px] font-bold text-center w-20">Qtd Atendida</th>
-                                <th className="pb-1 uppercase text-[10px] font-bold text-center w-20">Conferido</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              {pedido.itens_pedido?.filter(i => i.status === 'atendido').map(item => (
-                                <tr key={item.id}>
-                                  <td className="py-2 text-slate-800 font-medium">
-                                    {item.produto.nome}
-                                    <span className="text-[10px] text-slate-400 ml-2 italic">({item.produto.id.substring(0,8).toUpperCase()})</span>
-                                  </td>
-                                  <td className="py-2 text-center font-black text-lg">{item.quantidade_atendida}</td>
-                                  <td className="py-2 text-center">
-                                    <div className="w-5 h-5 border border-slate-400 mx-auto rounded"></div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ))}
+                <div className="space-y-3 mt-4">
+                  {listaPedidos.map(pedido => (
+                    <div key={pedido.id} className="border border-slate-400 rounded p-2">
+                      <div className="flex justify-between border-b border-slate-300 pb-1 mb-1">
+                        <span className="font-black text-[11px] text-slate-900 uppercase leading-none">Solicitante: {pedido.solicitante_nome}</span>
+                        <span className="text-[10px] font-bold leading-none">SIAPE: {pedido.solicitante_siape}</span>
+                      </div>
+                      
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left border-b border-slate-400">
+                            <th className="pb-1 uppercase text-[9px] font-bold w-12 pt-1">Unid.</th>
+                            <th className="pb-1 uppercase text-[9px] font-bold pt-1">Produto</th>
+                            <th className="pb-1 uppercase text-[9px] font-bold text-center w-16 pt-1">Qtd Sol.</th>
+                            <th className="pb-1 uppercase text-[9px] font-bold text-center w-16 pt-1">Qtd Aten.</th>
+                            <th className="pb-1 uppercase text-[9px] font-bold text-center w-16 pt-1">Conf.</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-300">
+                          {pedido.itens_pedido?.filter(i => i.status === 'atendido').map(item => (
+                            <tr key={item.id}>
+                              <td className="py-1 text-[10px] font-bold text-slate-600">
+                                {item.produto.unidade}
+                              </td>
+                              <td className="py-1 text-[11px] text-slate-800 font-bold print:leading-tight">
+                                {item.produto.nome.length > 20 ? item.produto.nome.substring(0, 20) + '...' : item.produto.nome}
+                              </td>
+                              <td className="py-1 text-center font-bold text-[11px]">
+                                {item.quantidade_solicitada}
+                              </td>
+                              <td className="py-1 text-center font-black text-[12px]">
+                                {item.quantidade_atendida}
+                              </td>
+                              <td className="py-1 text-center">
+                                <div className="w-4 h-4 border border-slate-500 mx-auto rounded-sm"></div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
+                  ))}
+                </div>
 
-                    <div className="mt-12 grid grid-cols-2 gap-12">
-                      <div className="border-t border-slate-400 pt-2 text-center">
-                        <p className="text-[10px] uppercase font-bold text-slate-500">Assinatura do Responsável (Setor)</p>
-                        <div className="mt-8 text-sm">Data: ____/____/________</div>
-                      </div>
-                      <div className="border-t border-slate-400 pt-2 text-center">
-                        <p className="text-[10px] uppercase font-bold text-slate-500">Assinatura do Almoxarife</p>
-                        <div className="mt-8 text-sm">Horário: ____:____</div>
-                      </div>
+                <div className="mt-8 flex justify-end">
+                  <div className="border-t border-slate-800 pt-1 text-center w-64">
+                    <p className="text-[9px] uppercase font-bold text-slate-800">Assinatura do Responsável (Setor)</p>
+                    <div className="mt-4 text-[10px] flex justify-between px-2">
+                      <span>Data: ___/___/____</span>
+                      <span>Hora: __:__</span>
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
               
               <div className="divide-y divide-slate-100 no-print">
