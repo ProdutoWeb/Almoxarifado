@@ -50,7 +50,7 @@ export const Logistica = () => {
   };
 
   const despacharPedido = async (id: string) => {
-    if (!window.confirm('Confirmar o envio deste pedido? Esta ação não pode ser desfeita.')) return;
+    if (!window.confirm('Almoxarifado Fácil — Despacho de Pedido\n\nConfirma o envio deste pedido ao setor solicitante? Esta ação não pode ser desfeita.')) return;
 
     try {
       const { error } = await supabase
@@ -69,7 +69,7 @@ export const Logistica = () => {
       });
     } catch (error) {
       console.error('Erro ao despachar pedido:', error);
-      alert('Houve um erro ao registrar o envio.');
+      alert('Almoxarifado Fácil: Houve um erro ao registar o despacho do pedido. Por favor, tente novamente.');
     }
   };
 

@@ -22,13 +22,13 @@ export const Login = () => {
       });
 
       if (error) {
-        setErro('Credenciais inválidas. Verifique o E-mail e a Senha.');
+        setErro('Almoxarifado Fácil: Credenciais inválidas. Verifique o seu e-mail e palavra-passe. Caso ainda não tenha confirmado o e-mail de registo, verifique a sua caixa de entrada.');
       } else {
         // O AuthContext vai capturar a mudança de sessão e redirecionar adequadamente (ou o usuário vai ficar livre para navegar)
         navigate('/admin/triagem');
       }
     } catch (err) {
-      setErro('Ocorreu um erro ao tentar fazer login. Tente novamente mais tarde.');
+      setErro('Almoxarifado Fácil: Ocorreu um erro inesperado ao tentar aceder ao sistema. Por favor, tente novamente mais tarde.');
     } finally {
       setLoading(false);
     }

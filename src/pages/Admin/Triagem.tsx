@@ -63,7 +63,7 @@ export const Triagem = () => {
         
       if (produtoError) {
         console.error('Erro ao abater estoque:', produtoError);
-        alert('Erro ao atualizar estoque do produto.');
+        alert('Almoxarifado Fácil: Erro ao atualizar o estoque do produto. Verifique a ligação e tente novamente.');
         return;
       }
     }
@@ -76,7 +76,7 @@ export const Triagem = () => {
       
     if (itemError) {
       console.error(itemError);
-      alert('Erro ao atualizar item');
+      alert('Almoxarifado Fácil: Erro ao processar o item do pedido. Por favor, tente novamente.');
       return;
     }
 
@@ -133,7 +133,7 @@ export const Triagem = () => {
     const dataProduto = itensAgrupadosPorProduto[produtoId];
     if (!dataProduto) return;
     
-    if (!window.confirm(`Deseja atender todas as ${dataProduto.solicitacoes.length} solicitações pendentes deste produto?\n\nAtenção: O sistema atenderá a fila de forma automática até acabar o estoque.`)) return;
+    if (!window.confirm(`Almoxarifado Fácil — Atendimento em Lote\n\nDeseja atender todas as ${dataProduto.solicitacoes.length} solicitações pendentes deste produto?\n\nAtenção: O sistema atenderá a fila automaticamente até esgotar o estoque disponível.`)) return;
 
     setLoading(true);
     try {
@@ -176,7 +176,7 @@ export const Triagem = () => {
       await carregarPedidos();
     } catch (e: any) {
       console.error(e);
-      alert('Erro ao atender em lote: ' + e.message);
+      alert('Almoxarifado Fácil: Erro ao processar o atendimento em lote: ' + e.message);
     } finally {
       setLoading(false);
     }

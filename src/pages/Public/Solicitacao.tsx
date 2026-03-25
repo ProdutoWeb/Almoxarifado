@@ -124,7 +124,7 @@ export const Solicitacao = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (carrinho.length === 0) {
-      alert('Adicione pelo menos um item ao pedido.');
+      alert('Almoxarifado Fácil: Adicione pelo menos um item ao carrinho antes de enviar a solicitação.');
       return;
     }
 
@@ -171,7 +171,7 @@ export const Solicitacao = () => {
       
     } catch (error: any) {
       console.error('Erro ao enviar pedido:', error);
-      alert(`Ocorreu um erro ao enviar o pedido: ${error?.message || 'Erro desconhecido'}. Tente novamente.`);
+      alert(`Almoxarifado Fácil: Ocorreu um erro ao enviar a sua solicitação de materiais: ${error?.message || 'Erro desconhecido'}.\n\nPor favor, tente novamente ou contacte o Almoxarifado.`);
     } finally {
       setSubmitting(false);
     }

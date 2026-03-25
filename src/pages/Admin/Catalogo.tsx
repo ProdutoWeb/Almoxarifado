@@ -158,21 +158,21 @@ export const Catalogo = () => {
       carregarProdutos();
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
-      alert('Erro ao salvar o produto.');
+      alert('Almoxarifado Fácil: Erro ao salvar o produto no catálogo. Verifique os dados e tente novamente.');
     } finally {
       setSalvando(false);
     }
   };
 
   const excluirProduto = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir este produto?')) return;
+    if (!window.confirm('Almoxarifado Fácil — Exclusão de Produto\n\nTem a certeza de que deseja excluir este produto do catálogo? Esta ação não poderá ser desfeita.')) return;
     try {
       const { error } = await supabase.from('produtos').delete().eq('id', id);
       if (error) throw error;
       carregarProdutos();
     } catch (error) {
       console.error('Erro ao excluir:', error);
-      alert('Não foi possível excluir. Talvez haja pedidos vinculados a este produto.');
+      alert('Almoxarifado Fácil: Não foi possível excluir o produto. É provável que existam pedidos vinculados a este item.');
     }
   };
 

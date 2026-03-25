@@ -43,11 +43,11 @@ export const Cadastro = () => {
         navigate('/');
       } else {
         // Se e-mail confirmation estiver ligado no Supabase
-        alert('Conta criada com sucesso! Verifique seu e-mail para validar a conta antes de fazer o login.');
+        alert('✅ Registo no Almoxarifado Fácil concluído!\n\nEnviámos um e-mail de confirmação para o seu endereço institucional. Por favor, verifique a sua caixa de entrada (e a pasta de spam) e clique no link de confirmação para ativar a sua conta.\n\nSó após a confirmação poderá fazer login no sistema.');
         navigate('/login');
       }
     } catch (err) {
-      setErro('Ocorreu um erro ao tentar criar a conta. Tente novamente mais tarde.');
+      setErro('Almoxarifado Fácil: Ocorreu um erro inesperado ao tentar criar a sua conta. Por favor, tente novamente mais tarde ou contacte o suporte.');
     } finally {
       setLoading(false);
     }
@@ -90,7 +90,7 @@ export const Cadastro = () => {
               required
               minLength={6}
               className="w-full border shadow-sm rounded-lg focus:border-blue-500 focus:ring-blue-500 p-2.5 border-slate-300 text-slate-900 bg-slate-50 outline-none"
-              placeholder="Inisira no mínimo 6 caracteres"
+              placeholder="Insira no mínimo 6 caracteres"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
             />
