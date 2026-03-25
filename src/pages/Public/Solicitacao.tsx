@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 import type { Database } from '../../types/database.types';
-import { Plus, Minus, Check, Clock, XCircle, Search, Eraser, Download } from 'lucide-react';
+import { Plus, Minus, Check, XCircle, Search, Eraser, Download, LogOut } from 'lucide-react';
 import Papa from 'papaparse';
 
 type Produto = Database['public']['Tables']['produtos']['Row'];
 type ItemCarrinho = { produto: Produto; quantidade: number };
 
 export const Solicitacao = () => {
+  const { isAuthenticated, user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
+
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +23,7 @@ export const Solicitacao = () => {
   const diaAtual = new Date().getDate();
   const periodoBloqueado = diaAtual < 15;
 
+  // O form agora reflete os dados inalteráveis do perfil do usuário logado
   const [form, setForm] = useState({
     nome: '',
     siape: '',
@@ -27,6 +33,30 @@ export const Solicitacao = () => {
   const [filtroCodigo, setFiltroCodigo] = useState('');
   const [filtroDescricao, setFiltroDescricao] = useState('');
   const [buscaAplicada, setBuscaAplicada] = useState({ codigo: '', descricao: '' });
+
+  useEffect(() => {
+    // Redireciona para login se não estiver autenticado
+    if (!isAuthenticated) {
+      navigate('/login', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    // Abastece os dados fixos
+    if (profile && user) {
+      setForm({
+        nome: user.email || '',
+        siape: profile.siape,
+        departamento: profile.setor
+      });
+    }
+  }, [profile, user]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      carregarProdutos();
+    }
+  }, [isAuthenticated]);
 
   const handleBuscar = () => {
     setBuscaAplicada({ codigo: filtroCodigo, descricao: filtroDescricao });
@@ -46,10 +76,6 @@ export const Solicitacao = () => {
       : true;
     return matchCodigo && matchDesc;
   });
-
-  useEffect(() => {
-    carregarProdutos();
-  }, []);
 
   const carregarProdutos = async () => {
     try {
@@ -101,25 +127,19 @@ export const Solicitacao = () => {
       alert('Adicione pelo menos um item ao pedido.');
       return;
     }
-    if (!form.nome || !form.siape || !form.departamento) {
-      alert('Preencha os campos de Solicitante e Pagadora no final do formulário.');
-      return;
-    }
 
     setSubmitting(true);
     try {
-      // O Supabase tem RLS (Row Level Security) que impede o usuário anônimo de ler dados (SELECT) da tabela pedidos.
-      // Portanto, não podemos fazer .insert().select().single() como usuário anônimo.
-      // A solução é gerar o UUID no cliente e enviar na inserção, para já termos o ID para a tabela filha.
       const novoPedidoId = crypto.randomUUID();
 
       const { error: pedidoError } = await supabase
         .from('pedidos')
         .insert({
           id: novoPedidoId,
-          solicitante_nome: form.nome,
-          solicitante_siape: form.siape,
-          departamento: form.departamento,
+          solicitante_nome: form.nome, // Preenchido via contexto (E-mail ou nome)
+          solicitante_siape: form.siape, // Via Perfil
+          departamento: form.departamento, // Via Perfil
+          user_id: user?.id, // Vincula o id logado para o RLS
           status_geral: 'pendente',
           enviado: false
         });
@@ -148,7 +168,6 @@ export const Solicitacao = () => {
       });
       setSucesso(true);
       setCarrinho([]);
-      setForm({ nome: '', siape: '', departamento: '' });
       
     } catch (error: any) {
       console.error('Erro ao enviar pedido:', error);
@@ -157,6 +176,8 @@ export const Solicitacao = () => {
       setSubmitting(false);
     }
   };
+
+  if (!isAuthenticated) return null;
 
   if (sucesso) {
     const baixarPlanilha = () => {
@@ -215,7 +236,31 @@ export const Solicitacao = () => {
   return (
     <div className="min-h-screen bg-white font-sans text-gray-700 pb-10">
       
-      {/* Container Principal que simula o Header Oculto e Foco no Conteúdo */}
+      {/* Header com Logout */}
+      <div className="bg-slate-900 w-full px-6 py-4 flex justify-between items-center text-white shadow-md">
+        <div className="flex flex-col">
+          <span className="text-lg font-bold tracking-tight">Portal de Solicitações de Materiais</span>
+          <span className="text-sm text-slate-300">Setor Autenticado: {profile?.setor}</span>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          {profile?.role === 'admin' && (
+            <button 
+              onClick={() => navigate('/admin')} 
+              className="text-sm font-medium hover:text-blue-300 underline"
+            >
+              Acessar Painel Admin
+            </button>
+          )}
+          <button 
+            onClick={signOut} 
+            className="flex items-center text-red-400 hover:text-red-300 hover:bg-slate-800 px-3 py-2 rounded transition-colors border border-transparent hover:border-red-400"
+          >
+            <LogOut className="w-4 h-4 mr-2"/> Sair
+          </button>
+        </div>
+      </div>
+
       <div className="max-w-[1400px] mx-auto pt-8 px-4">
         {periodoBloqueado && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded shadow-sm">
@@ -226,7 +271,7 @@ export const Solicitacao = () => {
           </div>
         )}
         <h1 className="text-2xl text-gray-800 font-normal mb-6">
-          Adicionar materiais à solicitação
+          Adicionar materiais à requisição
         </h1>
 
         <div className="flex flex-col lg:flex-row gap-4 items-start">
@@ -395,10 +440,7 @@ export const Solicitacao = () => {
                           <td className="p-2 text-center">
                             <button
                               type="button"
-                              onClick={() => {
-                                // Remove totalmente do carrinho
-                                setCarrinho(prev => prev.filter(c => c.produto.id !== item.produto.id));
-                              }}
+                              onClick={() => setCarrinho(prev => prev.filter(c => c.produto.id !== item.produto.id))}
                               className="text-red-500 hover:text-red-700 cursor-pointer inline-flex"
                               title="Remover Item"
                             >
@@ -412,42 +454,41 @@ export const Solicitacao = () => {
                 </table>
               </div>
 
-              {/* Informações da Requisição / Solicitante */}
+              {/* Informações da Requisição / Solicitante (Travadas via Perfil) */}
               <div className="p-4 bg-gray-50 text-xs text-gray-700 space-y-4 border-b border-gray-200">
-                <div className="flex flex-col gap-1">
-                  <span className="font-bold text-gray-900">Requisitado: Almoxarifado Central (Fixo)</span>
+                <div className="flex flex-col gap-1 text-center border-b pb-2 mb-2">
+                  <span className="font-bold text-gray-900 border border-yellow-300 bg-yellow-50 rounded p-1 text-[10px] uppercase">
+                    Os dados do solicitante são preenchidos automaticamente.
+                  </span>
                 </div>
                 
                 <div className="flex flex-col gap-1">
-                  <label className="font-bold">Solicitante (Nome):</label>
+                  <label className="font-bold text-gray-500">Solicitante (E-mail vinculado):</label>
                   <input
                     type="text"
-                    required
-                    className="w-full border border-gray-300 p-1.5 focus:border-blue-400 outline-none rounded-sm bg-white"
+                    disabled
+                    className="w-full border border-gray-300 p-1.5 outline-none rounded-sm bg-gray-200 text-gray-500 cursor-not-allowed"
                     value={form.nome}
-                    onChange={(e) => setForm({ ...form, nome: e.target.value })}
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="font-bold">Solicitante (SIAPE):</label>
+                  <label className="font-bold text-gray-500">Solicitante (SIAPE):</label>
                   <input
                     type="text"
-                    required
-                    className="w-full border border-gray-300 p-1.5 focus:border-blue-400 outline-none rounded-sm bg-white"
+                    disabled
+                    className="w-full border border-gray-300 p-1.5 outline-none rounded-sm bg-gray-200 text-gray-500 cursor-not-allowed"
                     value={form.siape}
-                    onChange={(e) => setForm({ ...form, siape: e.target.value })}
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="font-bold">Pagadora (Departamento/Setor):</label>
+                  <label className="font-bold text-gray-500">Pagadora (Setor de Origem):</label>
                   <input
                     type="text"
-                    required
-                    className="w-full border border-gray-300 p-1.5 focus:border-blue-400 outline-none rounded-sm bg-white"
+                    disabled
+                    className="w-full border border-gray-300 p-1.5 outline-none rounded-sm bg-gray-200 text-gray-500 cursor-not-allowed"
                     value={form.departamento}
-                    onChange={(e) => setForm({ ...form, departamento: e.target.value })}
                   />
                 </div>
               </div>
@@ -460,32 +501,21 @@ export const Solicitacao = () => {
                   className="w-full bg-gradient-to-b from-[#2a68a6] to-[#1c4b7b] hover:from-[#1c4b7b] hover:to-[#15385c] text-white border border-[#143555] rounded-sm py-2 flex items-center justify-center font-bold text-xs shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <Check className="h-4 w-4 mr-2" />
-                  {submitting ? 'Enviando...' : 'Enviar Solicitação'}
+                  {submitting ? 'Enviando Autorização...' : 'Enviar Solicitação Oficial'}
                 </button>
                 
                 <button
                   type="button"
-                  onClick={() => alert('Função guardada em rascunho local (Simulação)')}
-                  className="w-full bg-gradient-to-b from-[#2a68a6] to-[#1c4b7b] hover:from-[#1c4b7b] hover:to-[#15385c] text-white border border-[#143555] rounded-sm py-2 flex items-center justify-center font-bold text-xs shadow-sm transition-colors cursor-pointer"
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  Continuar Depois
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => {
                     setCarrinho([]);
-                    setForm({ nome: '', siape: '', departamento: '' });
                   }}
-                  className="w-full bg-gradient-to-b from-[#2a68a6] to-[#1c4b7b] hover:from-[#1c4b7b] hover:to-[#15385c] text-white border border-[#143555] rounded-sm py-2 flex items-center justify-center font-bold text-xs shadow-sm transition-colors cursor-pointer"
+                  className="w-full bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-300 rounded-sm py-2 flex items-center justify-center font-bold text-xs shadow-sm transition-colors cursor-pointer"
                 >
                   <XCircle className="h-4 w-4 mr-2" />
-                  Cancelar
+                  Esvaziar Carrinho
                 </button>
               </div>
             </form>
-
           </div>
 
         </div>

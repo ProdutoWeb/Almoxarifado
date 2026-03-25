@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { AdminLayout } from './components/AdminLayout';
 import { Solicitacao } from './pages/Public/Solicitacao';
 import { Login } from './pages/Auth/Login';
+import { Cadastro } from './pages/Auth/Cadastro';
 import { Catalogo } from './pages/Admin/Catalogo';
 import { Triagem } from './pages/Admin/Triagem';
 import { Logistica } from './pages/Admin/Logistica';
@@ -13,9 +14,12 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Solicitacao />} />
+          {/* Public / Auth Routes */}
           <Route path="/login" element={<Login />} />
+          <Route path="/cadastro" element={<Cadastro />} />
+
+          {/* User Route (Protected internally within the component) */}
+          <Route path="/" element={<Solicitacao />} />
 
           {/* Protected Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>

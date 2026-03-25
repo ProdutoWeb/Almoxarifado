@@ -4,7 +4,7 @@ import { Package, CheckSquare, Truck, LogOut, ShieldAlert, History } from 'lucid
 import clsx from 'clsx';
 
 export const AdminLayout = () => {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -12,8 +12,13 @@ export const AdminLayout = () => {
     return <Navigate to="/login" replace />;
   }
 
-  const handleLogout = () => {
-    logout();
+  // Se estiver logado, mas NÃO for admin, joga para a solicitação
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  const handleLogout = async () => {
+    await signOut();
     navigate('/login');
   };
 
@@ -32,7 +37,7 @@ export const AdminLayout = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
               <ShieldAlert className="h-8 w-8 text-blue-400" />
-              <span className="font-bold text-xl tracking-tight">Almoxarifado Fácil ADMIN</span>
+              <span className="font-bold text-xl tracking-tight">Almoxarifado ADMIN</span>
             </div>
             
             <nav className="flex items-center space-x-1">
@@ -56,7 +61,7 @@ export const AdminLayout = () => {
                 );
               })}
               
-              <div className="ml-4 pl-4 border-l border-slate-700">
+              <div className="ml-4 pl-4 border-l border-slate-700 flex items-center">
                 <button
                   onClick={handleLogout}
                   className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-red-400 hover:bg-slate-800 hover:text-red-300 transition-colors"
