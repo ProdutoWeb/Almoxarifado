@@ -123,6 +123,16 @@ export const Solicitacao = () => {
     });
   };
 
+  const atualizarQuantidade = (produtoId: string, novaQuantidade: number) => {
+    setCarrinho((prev) => 
+      prev.map(item => 
+        item.produto.id === produtoId 
+          ? { ...item, quantidade: novaQuantidade }
+          : item
+      )
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (carrinho.length === 0) {
@@ -429,7 +439,25 @@ export const Solicitacao = () => {
                               >
                                 <Minus className="h-3 w-3" />
                               </button>
-                              <span className="w-6 text-center">{item.quantidade}</span>
+                              <input
+                                type="number"
+                                min="1"
+                                className="w-10 text-center border border-gray-200 rounded-sm outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                value={item.quantidade}
+                                onChange={(e) => {
+                                  const novaQtd = parseInt(e.target.value);
+                                  if (!isNaN(novaQtd)) {
+                                    atualizarQuantidade(item.produto.id, novaQtd);
+                                  } else if (e.target.value === '') {
+                                    atualizarQuantidade(item.produto.id, 0);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (item.quantidade < 1) {
+                                    atualizarQuantidade(item.produto.id, 1);
+                                  }
+                                }}
+                              />
                               <button
                                 type="button"
                                 onClick={() => adicionarAoCarrinho(item.produto)}
