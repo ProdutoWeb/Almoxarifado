@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import type { Database } from '../../types/database.types';
 import { Plus, Pencil, Trash2, Search, X, Upload } from 'lucide-react';
 import Papa from 'papaparse';
+import { useSettings } from '../../context/SettingsContext';
 
 type Produto = Database['public']['Tables']['produtos']['Row'];
 
@@ -14,6 +15,7 @@ export const Catalogo = () => {
   const [produtoEditando, setProdutoEditando] = useState<Partial<Produto> | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
+  const { settings } = useSettings();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
@@ -282,7 +284,7 @@ export const Catalogo = () => {
                 <th className="px-6 py-4 rounded-tl-lg">Código</th>
                 <th className="px-6 py-4">Nome / Descrição</th>
                 <th className="px-6 py-4">Unidade</th>
-                <th className="px-6 py-4">Estoque</th>
+                {settings.controle_estoque && <th className="px-6 py-4">Estoque</th>}
                 <th className="px-6 py-4">Visível</th>
                 <th className="px-6 py-4 text-right rounded-tr-lg">Ações</th>
               </tr>
@@ -318,9 +320,11 @@ export const Catalogo = () => {
                         {produto.unidade}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-medium">
-                      {produto.quantidade_estoque}
-                    </td>
+                    {settings.controle_estoque && (
+                      <td className="px-6 py-4 font-medium">
+                        {produto.quantidade_estoque}
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <button
                         onClick={() => toggleVisibilidade(produto)}
@@ -416,17 +420,19 @@ export const Catalogo = () => {
                     onChange={e => setProdutoEditando({...produtoEditando, unidade: e.target.value.toUpperCase()})}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Estoque Inicial</label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
-                    value={produtoEditando.quantidade_estoque || 0}
-                    onChange={e => setProdutoEditando({...produtoEditando, quantidade_estoque: parseInt(e.target.value) || 0})}
-                  />
-                </div>
+                {settings.controle_estoque && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Estoque Inicial</label>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+                      value={produtoEditando.quantidade_estoque || 0}
+                      onChange={e => setProdutoEditando({...produtoEditando, quantidade_estoque: parseInt(e.target.value) || 0})}
+                    />
+                  </div>
+                )}
               </div>
               <div className="pt-4 flex justify-end space-x-3">
                 <button

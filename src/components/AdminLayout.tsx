@@ -1,6 +1,6 @@
 import { Navigate, Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Package, CheckSquare, Truck, LogOut, ShieldAlert, History } from 'lucide-react';
+import { Package, CheckSquare, Truck, LogOut, ShieldAlert, History, Settings } from 'lucide-react';
 import clsx from 'clsx';
 
 export const AdminLayout = () => {
@@ -27,6 +27,7 @@ export const AdminLayout = () => {
     { name: 'Triagem', path: '/admin/triagem', icon: CheckSquare },
     { name: 'Logística', path: '/admin/logistica', icon: Truck },
     { name: 'Histórico', path: '/admin/historico', icon: History },
+    { name: 'Configurações', path: '/admin/configuracoes', icon: Settings },
   ];
 
   return (

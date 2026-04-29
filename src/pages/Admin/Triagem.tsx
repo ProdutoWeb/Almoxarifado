@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../types/database.types';
 import { ChevronDown, ChevronUp, Check, X } from 'lucide-react';
+import { useSettings } from '../../context/SettingsContext';
 
 type PedidoComItens = Database['public']['Tables']['pedidos']['Row'] & {
   itens_pedido: (Database['public']['Tables']['itens_pedido']['Row'] & {
@@ -14,6 +15,7 @@ export const Triagem = () => {
   const [loading, setLoading] = useState(true);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
   const [viewMode, setViewMode] = useState<'pedido' | 'produto'>('pedido');
+  const { settings } = useSettings();
 
   useEffect(() => {
     carregarPedidos();
@@ -53,8 +55,8 @@ export const Triagem = () => {
     const produtoId = item?.produto?.id;
     const estoqueAtual = item?.produto?.quantidade_estoque || 0;
 
-    // Se o pedido foi atendido, abater a quantidade do estoque do produto
-    if (status === 'atendido' && qtdAtendida > 0 && produtoId) {
+    // Se o pedido foi atendido, abater a quantidade do estoque do produto (APENAS SE ATIVO)
+    if (status === 'atendido' && qtdAtendida > 0 && produtoId && settings.controle_estoque) {
       const novoEstoque = estoqueAtual - qtdAtendida;
       const { error: produtoError } = await supabase
         .from('produtos')
@@ -141,9 +143,12 @@ export const Triagem = () => {
       let totalDescontado = 0;
 
       for (const req of dataProduto.solicitacoes) {
-        if (estoqueDisponivel <= 0) break; // Sem estoque
+        // Se controle de estoque ativo, verifica disponibilidade. Se inativo, processa tudo.
+        if (settings.controle_estoque && estoqueDisponivel <= 0) break;
         
-        const qtdAtendida = Math.min(req.quantidade_solicitada, estoqueDisponivel);
+        const qtdAtendida = settings.controle_estoque 
+          ? Math.min(req.quantidade_solicitada, estoqueDisponivel)
+          : req.quantidade_solicitada;
         
         // 1. Atualizar o item
         await supabase
@@ -165,8 +170,8 @@ export const Triagem = () => {
         }
       }
 
-      // Atualizar o estoque
-      if (totalDescontado > 0) {
+      // Atualizar o estoque (APENAS SE ATIVO)
+      if (totalDescontado > 0 && settings.controle_estoque) {
         await supabase
           .from('produtos')
           .update({ quantidade_estoque: dataProduto.produto.quantidade_estoque - totalDescontado })
@@ -295,7 +300,7 @@ export const Triagem = () => {
                         <tr>
                           <th className="px-4 py-3 rounded-tl-lg rounded-bl-lg">Produto</th>
                           <th className="px-4 py-3 text-center">Solicitado</th>
-                          <th className="px-4 py-3 text-center">Estoque Atual</th>
+                          {settings.controle_estoque && <th className="px-4 py-3 text-center">Estoque Atual</th>}
                           <th className="px-4 py-3 text-right rounded-tr-lg rounded-br-lg">Decisão</th>
                         </tr>
                       </thead>
@@ -305,7 +310,8 @@ export const Triagem = () => {
                             key={item.id} 
                             item={item} 
                             pedidoId={pedido.id} 
-                            onResolvido={resolverItem} 
+                            onResolvido={resolverItem}
+                            showStock={settings.controle_estoque}
                           />
                         ))}
                       </tbody>
@@ -327,9 +333,11 @@ export const Triagem = () => {
                   <div className="flex items-center space-x-4 text-xs text-slate-300 mt-1">
                     <span>Cód: {data.produto.id.substring(0, 8).toUpperCase()}</span>
                     <span>Unidade: {data.produto.unidade}</span>
-                    <span className={`px-2 py-0.5 rounded font-bold ${data.produto.quantidade_estoque >= data.totalSolicitado ? 'bg-green-500/20 text-green-300' : 'bg-orange-500/20 text-orange-300'}`}>
-                      Estoque: {data.produto.quantidade_estoque}
-                    </span>
+                    {settings.controle_estoque && (
+                      <span className={`px-2 py-0.5 rounded font-bold ${data.produto.quantidade_estoque >= data.totalSolicitado ? 'bg-green-500/20 text-green-300' : 'bg-orange-500/20 text-orange-300'}`}>
+                        Estoque: {data.produto.quantidade_estoque}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="text-right flex flex-col items-end">
@@ -339,7 +347,7 @@ export const Triagem = () => {
                   </div>
                   <button 
                     onClick={() => atenderTodos(produtoId)}
-                    disabled={data.produto.quantidade_estoque === 0}
+                    disabled={settings.controle_estoque && data.produto.quantidade_estoque === 0}
                     className="bg-green-500 hover:bg-green-600 text-white text-[10px] px-3 py-1.5 rounded font-bold transition-colors disabled:opacity-50 cursor-pointer uppercase tracking-wide border border-transparent hover:border-green-700 shadow-sm"
                   >
                     Atender Todos
@@ -368,8 +376,9 @@ export const Triagem = () => {
                         <td className="px-6 py-4 text-right">
                           <AcaoSimplificadaItem 
                             item={item} 
-                            estoqueDisponivel={data.produto.quantidade_estoque}
+                            estoqueDisponivel={settings.controle_estoque ? data.produto.quantidade_estoque : 999999}
                             onResolvido={resolverItem}
+                            checkStock={settings.controle_estoque}
                           />
                         </td>
                       </tr>
@@ -386,10 +395,11 @@ export const Triagem = () => {
 };
 
 // Componente para ação rápida na visão por produto
-const AcaoSimplificadaItem = ({ item, estoqueDisponivel, onResolvido }: {
+const AcaoSimplificadaItem = ({ item, estoqueDisponivel, onResolvido, checkStock }: {
   item: any,
   estoqueDisponivel: number,
-  onResolvido: (itemId: string, pedidoId: string, status: 'atendido' | 'rejeitado', qtdAtendida: number) => void
+  onResolvido: (itemId: string, pedidoId: string, status: 'atendido' | 'rejeitado', qtdAtendida: number) => void,
+  checkStock: boolean
 }) => {
   const [qtd, setQtd] = useState(item.quantidade_solicitada);
   
@@ -398,14 +408,14 @@ const AcaoSimplificadaItem = ({ item, estoqueDisponivel, onResolvido }: {
       <input
         type="number"
         min="1"
-        max={estoqueDisponivel}
+        max={checkStock ? estoqueDisponivel : undefined}
         value={qtd}
         onChange={(e) => setQtd(Number(e.target.value))}
         className="w-14 h-7 text-center text-xs border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
       />
       <button
         onClick={() => onResolvido(item.id, item.pedido_id, 'atendido', qtd)}
-        disabled={qtd > estoqueDisponivel || qtd < 1}
+        disabled={(checkStock && qtd > estoqueDisponivel) || qtd < 1}
         className="h-7 px-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold text-[10px] transition-colors disabled:opacity-50"
       >
         OK
@@ -421,10 +431,11 @@ const AcaoSimplificadaItem = ({ item, estoqueDisponivel, onResolvido }: {
 };
 
 // Componente para a linha do item, gerenciando seu próprio estado de quantidade de atendimento
-const ItemTriagemLinha = ({ item, pedidoId, onResolvido }: { 
+const ItemTriagemLinha = ({ item, pedidoId, onResolvido, showStock }: { 
   item: PedidoComItens['itens_pedido'][0], 
   pedidoId: string, 
-  onResolvido: (itemId: string, pedidoId: string, status: 'atendido' | 'rejeitado', qtdAtendida: number) => void 
+  onResolvido: (itemId: string, pedidoId: string, status: 'atendido' | 'rejeitado', qtdAtendida: number) => void,
+  showStock: boolean
 }) => {
   const [qtd, setQtd] = useState(item.quantidade_solicitada);
 
@@ -433,7 +444,7 @@ const ItemTriagemLinha = ({ item, pedidoId, onResolvido }: {
       <tr className="bg-slate-50 border-white">
         <td className="px-4 py-3 font-medium text-slate-700">{item.produto?.nome || 'Produto Indisponível'}</td>
         <td className="px-4 py-3 text-center">{item.quantidade_solicitada}</td>
-        <td className="px-4 py-3 text-center">-</td>
+        {showStock && <td className="px-4 py-3 text-center">-</td>}
         <td className="px-4 py-3 text-right">
           {item.status === 'atendido' ? (
             <span className="inline-flex items-center text-green-700 bg-green-100 px-2 py-1 rounded text-xs font-semibold">
@@ -463,24 +474,26 @@ const ItemTriagemLinha = ({ item, pedidoId, onResolvido }: {
       <td className="px-4 py-3 text-center font-medium">
         {item.quantidade_solicitada}
       </td>
-      <td className="px-4 py-3 text-center">
-        <span className={`px-2 py-1 rounded text-xs font-bold ${estoqueAtual >= item.quantidade_solicitada ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
-          {estoqueAtual}
-        </span>
-      </td>
+      {showStock && (
+        <td className="px-4 py-3 text-center">
+          <span className={`px-2 py-1 rounded text-xs font-bold ${estoqueAtual >= item.quantidade_solicitada ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+            {estoqueAtual}
+          </span>
+        </td>
+      )}
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end space-x-2">
           <input
             type="number"
             min="1"
-            max={estoqueAtual}
+            max={showStock ? estoqueAtual : undefined}
             value={qtd}
             onChange={(e) => setQtd(Number(e.target.value))}
             className="w-16 h-8 text-center text-sm border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
           />
           <button
             onClick={() => onResolvido(item.id, pedidoId, 'atendido', qtd)}
-            disabled={qtd > estoqueAtual || qtd < 1}
+            disabled={(showStock && qtd > estoqueAtual) || qtd < 1}
             className="h-8 px-3 bg-green-600 hover:bg-green-700 text-white rounded font-medium text-xs transition-colors disabled:opacity-50 cursor-pointer"
           >
             Atender
