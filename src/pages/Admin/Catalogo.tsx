@@ -13,6 +13,7 @@ export const Catalogo = () => {
   const [modalAberto, setModalAberto] = useState(false);
   const [produtoEditando, setProdutoEditando] = useState<Partial<Produto> | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [toggling, setToggling] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
@@ -66,7 +67,9 @@ export const Catalogo = () => {
                 nome,
                 unidade,
                 quantidade_estoque: 0,
-                // descricao pode ficar vazia, não há coluna no csv
+                is_active: true,
+                codigo: null,
+                observacao: null
               };
             })
             .filter(Boolean) as Database['public']['Tables']['produtos']['Insert'][];
@@ -112,7 +115,7 @@ export const Catalogo = () => {
   };
 
   const abrirModalNovo = () => {
-    setProdutoEditando({ nome: '', descricao: '', unidade: 'UN', quantidade_estoque: 0 });
+    setProdutoEditando({ nome: '', descricao: '', unidade: 'UN', quantidade_estoque: 0, is_active: true, codigo: '' });
     setModalAberto(true);
   };
 
@@ -139,7 +142,9 @@ export const Catalogo = () => {
             nome: produtoEditando.nome,
             descricao: produtoEditando.descricao,
             unidade: produtoEditando.unidade,
-            quantidade_estoque: produtoEditando.quantidade_estoque
+            quantidade_estoque: produtoEditando.quantidade_estoque,
+            is_active: produtoEditando.is_active,
+            codigo: produtoEditando.codigo || null
           })
           .eq('id', produtoEditando.id);
         if (error) throw error;
@@ -150,7 +155,9 @@ export const Catalogo = () => {
             nome: produtoEditando.nome!,
             descricao: produtoEditando.descricao,
             unidade: produtoEditando.unidade!,
-            quantidade_estoque: produtoEditando.quantidade_estoque || 0
+            quantidade_estoque: produtoEditando.quantidade_estoque || 0,
+            is_active: produtoEditando.is_active !== undefined ? produtoEditando.is_active : true,
+            codigo: produtoEditando.codigo || null
           });
         if (error) throw error;
       }
@@ -161,6 +168,27 @@ export const Catalogo = () => {
       alert('Almoxarifado Fácil: Erro ao salvar o produto no catálogo. Verifique os dados e tente novamente.');
     } finally {
       setSalvando(false);
+    }
+  };
+
+  const toggleVisibilidade = async (produto: Produto) => {
+    setToggling(produto.id);
+    try {
+      const { error } = await supabase
+        .from('produtos')
+        .update({ is_active: !produto.is_active })
+        .eq('id', produto.id);
+      
+      if (error) throw error;
+      
+      setProdutos(produtos.map(p => 
+        p.id === produto.id ? { ...p, is_active: !p.is_active } : p
+      ));
+    } catch (error) {
+      console.error('Erro ao alterar visibilidade:', error);
+      mostrarToast('Erro ao alterar status do produto.', 'erro');
+    } finally {
+      setToggling(null);
     }
   };
 
@@ -178,7 +206,8 @@ export const Catalogo = () => {
 
   const produtosFiltrados = produtos.filter(p => 
     p.nome.toLowerCase().includes(busca.toLowerCase()) || 
-    (p.descricao && p.descricao.toLowerCase().includes(busca.toLowerCase()))
+    (p.descricao && p.descricao.toLowerCase().includes(busca.toLowerCase())) ||
+    (p.codigo && p.codigo.toLowerCase().includes(busca.toLowerCase()))
   );
 
   return (
@@ -250,31 +279,39 @@ export const Catalogo = () => {
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-100 text-slate-700 uppercase text-xs font-semibold">
               <tr>
-                <th className="px-6 py-4 rounded-tl-lg">Nome / Descrição</th>
+                <th className="px-6 py-4 rounded-tl-lg">Código</th>
+                <th className="px-6 py-4">Nome / Descrição</th>
                 <th className="px-6 py-4">Unidade</th>
                 <th className="px-6 py-4">Estoque</th>
+                <th className="px-6 py-4">Visível</th>
                 <th className="px-6 py-4 text-right rounded-tr-lg">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800"></div>
                   </td>
                 </tr>
               ) : produtosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                     Nenhum produto encontrado.
                   </td>
                 </tr>
               ) : (
                 produtosFiltrados.map((produto) => (
-                  <tr key={produto.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={produto.id} className={`hover:bg-slate-50 transition-colors ${!produto.is_active ? 'opacity-60' : ''}`}>
+                    <td className="px-6 py-4 font-mono text-sm text-slate-500">
+                      {produto.codigo || '-'}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-800">{produto.nome}</div>
                       <div className="text-slate-500 text-xs mt-1 truncate max-w-xs">{produto.descricao || '-'}</div>
+                      {produto.observacao && (
+                        <div className="text-amber-600 text-xs mt-1 font-medium bg-amber-50 inline-block px-1 rounded">{produto.observacao}</div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className="bg-slate-200 text-slate-700 py-1 px-2 rounded font-medium text-xs">
@@ -283,6 +320,21 @@ export const Catalogo = () => {
                     </td>
                     <td className="px-6 py-4 font-medium">
                       {produto.quantidade_estoque}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => toggleVisibilidade(produto)}
+                        disabled={toggling === produto.id}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none cursor-pointer ${
+                          produto.is_active ? 'bg-emerald-500' : 'bg-slate-300'
+                        } ${toggling === produto.id ? 'opacity-50' : ''}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            produto.is_active ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end space-x-2">
@@ -323,15 +375,26 @@ export const Catalogo = () => {
               </button>
             </div>
             <form onSubmit={salvarProduto} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nome</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
-                  value={produtoEditando.nome || ''}
-                  onChange={e => setProdutoEditando({...produtoEditando, nome: e.target.value})}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Nome</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+                    value={produtoEditando.nome || ''}
+                    onChange={e => setProdutoEditando({...produtoEditando, nome: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Código (SIE)</label>
+                  <input
+                    type="text"
+                    className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+                    value={produtoEditando.codigo || ''}
+                    onChange={e => setProdutoEditando({...produtoEditando, codigo: e.target.value})}
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Descrição</label>

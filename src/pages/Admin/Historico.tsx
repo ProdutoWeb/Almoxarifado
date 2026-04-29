@@ -107,10 +107,10 @@ export const Historico = () => {
                   <tr key={pedido.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-bold text-slate-800">
-                        {new Date(pedido.criado_em).toLocaleDateString()}
+                        {new Date(pedido.despachado_em || pedido.criado_em).toLocaleDateString()}
                       </div>
                       <div className="text-xs text-slate-500">
-                        {new Date(pedido.criado_em).toLocaleTimeString()}
+                        {new Date(pedido.despachado_em || pedido.criado_em).toLocaleTimeString()}
                       </div>
                     </td>
                     <td className="px-6 py-4">

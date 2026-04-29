@@ -69,7 +69,9 @@ export const Solicitacao = () => {
   };
 
   const produtosFiltrados = produtos.filter(p => {
-    const matchCodigo = buscaAplicada.codigo ? p.id.toLowerCase().includes(buscaAplicada.codigo.toLowerCase()) : true;
+    if (p.is_active === false) return false;
+    
+    const matchCodigo = buscaAplicada.codigo ? p.codigo?.toLowerCase().includes(buscaAplicada.codigo.toLowerCase()) : true;
     const desc = buscaAplicada.descricao.toLowerCase();
     const matchDesc = buscaAplicada.descricao 
       ? p.nome.toLowerCase().includes(desc) || (p.descricao && p.descricao.toLowerCase().includes(desc))
@@ -189,7 +191,7 @@ export const Solicitacao = () => {
         "Solicitante": ultimoPedido.form.nome,
         "SIAPE": ultimoPedido.form.siape,
         "Departamento": ultimoPedido.form.departamento,
-        "Cód Produto": item.produto.id,
+        "Cód Produto": item.produto.codigo || item.produto.id.substring(0, 8),
         "Produto": item.produto.nome,
         "Unidade": item.produto.unidade,
         "Qtd Solicitada": item.quantidade
@@ -265,8 +267,8 @@ export const Solicitacao = () => {
         {periodoBloqueado && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded shadow-sm">
             <h3 className="font-bold text-lg mb-1 text-red-800">Acesso Bloqueado Temporariamente</h3>
-            <p className="text-red-700">
-              A criação de novos pedidos ao almoxarifado é permitida exclusivamente entre os dias <strong>15 e 31</strong> de cada mês. Neste período (dias 1 a 14), o sistema encontra-se fechado para novas solicitações.
+            <p className="text-red-700 font-medium">
+              Período de pedidos ao almoxarifado: do dia 15 ao dia 30 de cada mês
             </p>
           </div>
         )}
@@ -357,7 +359,7 @@ export const Solicitacao = () => {
                   ) : (
                     produtosFiltrados.map((produto) => (
                       <tr key={produto.id} className="hover:bg-gray-50">
-                        <td className="p-3 text-center text-gray-600 font-mono text-xs">{produto.id.substring(0, 8)}</td>
+                        <td className="p-3 text-center text-gray-600 font-mono text-xs">{produto.codigo || '-'}</td>
                         <td className="p-3">
                           <span className="font-semibold text-gray-800">{produto.nome}</span>
                           {produto.descricao && (

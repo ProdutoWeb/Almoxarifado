@@ -55,7 +55,10 @@ export const Logistica = () => {
     try {
       const { error } = await supabase
         .from('pedidos')
-        .update({ enviado: true })
+        .update({ 
+          enviado: true,
+          despachado_em: new Date().toISOString()
+        })
         .eq('id', id);
 
       if (error) throw error;
@@ -142,7 +145,12 @@ export const Logistica = () => {
               {/* Layout de Impressão (Visível apenas no print) */}
               <div className="hidden print:block print:p-0">
                 <style type="text/css" media="print">
-                  {`@page { margin: 10mm; }`}
+                  {`
+                    @page { margin: 5mm; }
+                    body { line-height: 1.1; }
+                    table { border-collapse: collapse; }
+                    th, td { padding: 2px !important; }
+                  `}
                 </style>
                 <div className="mb-2 border-b-2 border-slate-900 pb-2 flex justify-between items-end">
                   <div>

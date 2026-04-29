@@ -65,6 +65,9 @@ jobs:
             # Remover container antigo se existir
             docker rm -f almoxarifado-app || true
             
+            # Garantir que a rede existe
+            docker network inspect pwbot_net >/dev/null 2>&1 || docker network create pwbot_net
+            
             # Rodar o novo container conectando na rede do proxy
             docker run -d \
               --name almoxarifado-app \

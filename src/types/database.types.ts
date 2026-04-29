@@ -17,6 +17,9 @@ export interface Database {
           unidade: string
           quantidade_estoque: number
           criado_em: string
+          is_active: boolean
+          codigo: string | null
+          observacao: string | null
         }
         Insert: {
           id?: string
@@ -25,6 +28,9 @@ export interface Database {
           unidade: string
           quantidade_estoque?: number
           criado_em?: string
+          is_active?: boolean
+          codigo?: string | null
+          observacao?: string | null
         }
         Update: {
           id?: string
@@ -33,6 +39,9 @@ export interface Database {
           unidade?: string
           quantidade_estoque?: number
           criado_em?: string
+          is_active?: boolean
+          codigo?: string | null
+          observacao?: string | null
         }
         Relationships: []
       }
@@ -45,6 +54,7 @@ export interface Database {
           status_geral: 'pendente' | 'processado'
           enviado: boolean
           criado_em: string
+          despachado_em: string | null
         }
         Insert: {
           id?: string
@@ -54,6 +64,7 @@ export interface Database {
           status_geral?: 'pendente' | 'processado'
           enviado?: boolean
           criado_em?: string
+          despachado_em?: string | null
         }
         Update: {
           id?: string
@@ -63,6 +74,7 @@ export interface Database {
           status_geral?: 'pendente' | 'processado'
           enviado?: boolean
           criado_em?: string
+          despachado_em?: string | null
         }
         Relationships: []
       }
